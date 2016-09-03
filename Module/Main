@@ -1,26 +1,31 @@
 Option Explicit
 
+Dim cvsApp As Object, cvsSrv As Object, cvsconn As Object, INFO As Object, cvsRepProp As Object, cvsLog As Object
+Dim bConnected As Boolean, b As Boolean
+Dim iServer As Integer
+Dim ACD As String
+
+Dim MainBook As Workbook, AgentBook As Workbook, WFMBook As Workbook
+Dim wsMainBook As Worksheet, wsAgentBook As Worksheet, wsWFMBook As Worksheet, KanaSheet  As Worksheet
+Dim counter As Integer
+
 Public List As Collection
+
+Public Const ROWCOUNT = 24
 
 Sub mainTab()
 
-Dim MainBook, AgentBook, WFMBook As Workbook
-Dim wsMainBook, wsAgentBook, wsWFMBook  As Worksheet
-Dim x, i As Integer
+Dim x As Integer
+Dim i As Integer
 
+Dim listCollection As New Collection
 Dim rowCollection As New Collection
 
-Set MainBook = ActiveWorkbook
-Set wsMainBook = MainBook.Sheets("Main")
+ActiveWorkbook.Worksheets.Add.Name = "RawKana"
 
-
-
-Application.DisplayAlerts = False
-Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="******", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
-Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")
-Application.DisplayAlerts = True
-Set wsAgentBook = AgentBook.Sheets("Timetable")
-Set wsWFMBook = WFMBook.Sheets(1)
+setProperties
+OpenCmsConnection
+getKanaReport
 
 
 With wsMainBook
@@ -54,17 +59,19 @@ End With
 wsMainBook.Activate
 x = 1
 i = 2
+
 Do
-    If wsAgentBook.Cells(x, 12) = "Sales & Service" Then
-    
-           rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Ext
+    If wsAgentBook.Cells(x, 12) = "Sales & Service" And wsAgentBook.Cells(x, 20) = "YES" Then
+        
+        Set rowCollection = New Collection
+           rowCollection.Add (wsAgentBook.Cells(x, 1)) ''Ext
            rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Name
-           rowCollection.Add ("Kana percent goes here") '' Kana %
+           rowCollection.Add getKanaPercent(wsAgentBook.Cells(x, 1), x) '' Kana %
            rowCollection.Add ("ePh goes here") ''ePh
            rowCollection.Add (wsAgentBook.Cells(x, 3)) ''Lang
            rowCollection.Add (wsAgentBook.Cells(x, 4)) ''Lang 2
            rowCollection.Add ("START") ''Start
-           rowCollection.Add ("STOP")  ''Stop
+           rowCollection.Add ("STOP") ''Stop
            rowCollection.Add ("OTHER") ''Other
            rowCollection.Add (wsAgentBook.Cells(x, 13)) ''Notes
            rowCollection.Add (wsAgentBook.Cells(x, 5)) ''KET
@@ -81,16 +88,26 @@ Do
            rowCollection.Add (wsAgentBook.Cells(x, 18)) ''ID BRG
            rowCollection.Add (wsAgentBook.Cells(x, 19)) ''ID PROF
            rowCollection.Add (wsAgentBook.Cells(x, 12)) ''DEP
-                    i = i + 1
-                    
-            MsgBox rowCollection(13)
-    
+           listCollection.Add rowCollection
+
     End If
     x = x + 1
+    
+   
 Loop Until IsEmpty(wsAgentBook.Cells(x, 1))
+
+Dim a, b As Integer
+
+For a = 1 To listCollection.Count
+    For b = 1 To ROWCOUNT
+        wsMainBook.Cells(a + 1, b) = listCollection(a)(b)
+    Next
+Next
+
 
 
 End Sub
+
 
 Function OpenCmsConnection()
 
@@ -117,11 +134,13 @@ If bConnected = False Then
   If MsgBox("No active CMS Supervisor connection found.  Please log in and try again.", vbOKOnly, "Another Security Warning") = vbOK Then End
 End If
   cvsSrv.Reports.ACD = 1
-  Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX")
-  b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)
 
 
-    If b Then
+End Function
+
+
+Function getKanaReport()
+
     Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX")
     b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)
         cvsRepProp.Window.Top = 11595
@@ -130,13 +149,15 @@ End If
         cvsRepProp.Window.Height = 2850
         cvsRepProp.TimeZone = "Europe/Dublin"
         cvsRepProp.SetProperty "Agent Group", "C all"
-        cvsRepProp.SetProperty "Dates", "  " & weeklyDate() & "  "
+        cvsRepProp.SetProperty "Dates", "  " & monthToDate() & "  "
         b = cvsRepProp.ExportData("", 9, 0, True, True, True)
         cvsRepProp.Quit
-                    Application.DisplayAlerts = False
-                        weekly.Cells.Clear
-                        weekly.Cells.PasteSpecial
+        
+Application.DisplayAlerts = False
+    KanaSheet.Cells.PasteSpecial
+Application.DisplayAlerts = True
 
+                        
 End Function
 
 Function CloseCmsConnection()
@@ -147,4 +168,55 @@ Function CloseCmsConnection()
     Set cvsSrv = Nothing
     Set cvsApp = Nothing
 End Function
+
+
+Function setProperties()
+
+Set MainBook = ActiveWorkbook
+Set wsMainBook = MainBook.Sheets("Main")
+
+Application.DisplayAlerts = False
+    Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="Intraday14", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
+    Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")
+    Set wsAgentBook = AgentBook.Sheets("Timetable")
+    Set wsWFMBook = WFMBook.Sheets(1)
+    Set KanaSheet = MainBook.Sheets("RawKana")
+Application.DisplayAlerts = True
+
+
+End Function
+
+Function monthToDate() As String
+Dim dateRng As String
+Dim firstOfMnth, todayDate, previousDay As Variant
+
+previousDay = Date - 1
+todayDate = Day(Date)
+firstOfMnth = Date - todayDate + 1
+    If todayDate = 1 Then
+        monthToDate = firstOfMnth
+        Exit Function
+    ElseIf todayDate = 2 Then monthToDate = Date - Day(Date) + 1
+    Else: monthToDate = Date - Day(Date) + 1 & "-" & Date - 1
+    End If
+End Function
+
+Function getKanaPercent(extNum As Long, x As Integer)
+counter = 1
+getKanaPercent = 0
+
+
+Do
+    If KanaSheet.Cells(counter, 2) = extNum Then
+        '''Getting Kana percent calculation
+        On Error Resume Next
+        getKanaPercent = KanaSheet.Cells(counter, 14) / (KanaSheet.Cells(counter, 3) - (KanaSheet.Cells(counter, 5) + KanaSheet.Cells(counter, 6) + KanaSheet.Cells(counter, 7) + KanaSheet.Cells(counter, 8) + _
+        KanaSheet.Cells(counter, 11) + KanaSheet.Cells(counter, 12) + KanaSheet.Cells(counter, 13)))
+        Exit Function
+    End If
+    counter = counter + 1
+Loop Until IsEmpty(KanaSheet.Cells(counter, 1))
+
+End Function
+
 
