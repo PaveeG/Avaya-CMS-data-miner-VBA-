@@ -16,7 +16,7 @@ Set wsMainBook = MainBook.Sheets("Main")
 
 
 Application.DisplayAlerts = False
-Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="Intraday14", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
+Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="******", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
 Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")
 Application.DisplayAlerts = True
 Set wsAgentBook = AgentBook.Sheets("Timetable")
