@@ -1,0 +1,150 @@
+Option Explicit
+
+Public List As Collection
+
+Sub mainTab()
+
+Dim MainBook, AgentBook, WFMBook As Workbook
+Dim wsMainBook, wsAgentBook, wsWFMBook  As Worksheet
+Dim x, i As Integer
+
+Dim rowCollection As New Collection
+
+Set MainBook = ActiveWorkbook
+Set wsMainBook = MainBook.Sheets("Main")
+
+
+
+Application.DisplayAlerts = False
+Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="Intraday14", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
+Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")
+Application.DisplayAlerts = True
+Set wsAgentBook = AgentBook.Sheets("Timetable")
+Set wsWFMBook = WFMBook.Sheets(1)
+
+
+With wsMainBook
+    .Cells.ClearContents
+    .Cells(1, 1) = "Ext"
+    .Cells(1, 2) = "Name"
+    .Cells(1, 3) = "Kana %"
+    .Cells(1, 4) = "ePH"
+    .Cells(1, 5) = "Lang 1"
+    .Cells(1, 6) = "Lang 2"
+    .Cells(1, 7) = "Start"
+    .Cells(1, 8) = "Stop"
+    .Cells(1, 9) = "Other"
+    .Cells(1, 10) = "Notes"
+    .Cells(1, 11) = "KET"
+    .Cells(1, 12) = "SRS"
+    .Cells(1, 13) = "S&S"
+    .Cells(1, 14) = "BRG"
+    .Cells(1, 15) = "LUX"
+    .Cells(1, 16) = "SPG"
+    .Cells(1, 17) = "CS"
+    .Cells(1, 18) = "RQ SRS"
+    .Cells(1, 19) = "RQ SNS"
+    .Cells(1, 20) = "RQ BRG"
+    .Cells(1, 21) = "ID SRS"
+    .Cells(1, 22) = "ID BRG"
+    .Cells(1, 23) = "ID PROF"
+    .Cells(1, 24) = "Department"
+End With
+
+wsMainBook.Activate
+x = 1
+i = 2
+Do
+    If wsAgentBook.Cells(x, 12) = "Sales & Service" Then
+    
+           rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Ext
+           rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Name
+           rowCollection.Add ("Kana percent goes here") '' Kana %
+           rowCollection.Add ("ePh goes here") ''ePh
+           rowCollection.Add (wsAgentBook.Cells(x, 3)) ''Lang
+           rowCollection.Add (wsAgentBook.Cells(x, 4)) ''Lang 2
+           rowCollection.Add ("START") ''Start
+           rowCollection.Add ("STOP")  ''Stop
+           rowCollection.Add ("OTHER") ''Other
+           rowCollection.Add (wsAgentBook.Cells(x, 13)) ''Notes
+           rowCollection.Add (wsAgentBook.Cells(x, 5)) ''KET
+           rowCollection.Add (wsAgentBook.Cells(x, 6)) ''SRS
+           rowCollection.Add (wsAgentBook.Cells(x, 7)) ''S&S
+           rowCollection.Add (wsAgentBook.Cells(x, 8)) ''BRG
+           rowCollection.Add (wsAgentBook.Cells(x, 9)) '' LUX
+           rowCollection.Add (wsAgentBook.Cells(x, 10)) ''SPG
+           rowCollection.Add (wsAgentBook.Cells(x, 11)) ''CS
+           rowCollection.Add (wsAgentBook.Cells(x, 14)) ''SRS RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 15)) ''S&S RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 16)) ''BRG RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 17)) ''ID SRS
+           rowCollection.Add (wsAgentBook.Cells(x, 18)) ''ID BRG
+           rowCollection.Add (wsAgentBook.Cells(x, 19)) ''ID PROF
+           rowCollection.Add (wsAgentBook.Cells(x, 12)) ''DEP
+                    i = i + 1
+                    
+            MsgBox rowCollection(13)
+    
+    End If
+    x = x + 1
+Loop Until IsEmpty(wsAgentBook.Cells(x, 1))
+
+
+End Sub
+
+Function OpenCmsConnection()
+
+Dim dateRange2 As String
+
+dateRange2 = "01/07/2016" & "-" & "09/07/2016"
+
+Application.ScreenUpdating = False
+
+Set cvsApp = CreateObject("ACSUP.cvsApplication")
+Set cvsconn = CreateObject("ACSCN.cvsConnection")
+Set cvsSrv = CreateObject("ACSUPSRV.cvsServer")
+  bConnected = False
+  Set cvsSrv = cvsApp.Servers(1)
+  If cvsSrv.ServerKey Like "*\10.5.168.27\*\*\*" Then
+    bConnected = True
+  End If
+If bConnected = False Then
+   If cvsSrv.ServerKey Like "*\10.20.35.27\*\*\*" Then
+    bConnected = True
+  End If
+End If
+If bConnected = False Then
+  If MsgBox("No active CMS Supervisor connection found.  Please log in and try again.", vbOKOnly, "Another Security Warning") = vbOK Then End
+End If
+  cvsSrv.Reports.ACD = 1
+  Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX")
+  b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)
+
+
+    If b Then
+    Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX")
+    b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)
+        cvsRepProp.Window.Top = 11595
+        cvsRepProp.Window.Left = 15
+        cvsRepProp.Window.Width = 6450
+        cvsRepProp.Window.Height = 2850
+        cvsRepProp.TimeZone = "Europe/Dublin"
+        cvsRepProp.SetProperty "Agent Group", "C all"
+        cvsRepProp.SetProperty "Dates", "  " & weeklyDate() & "  "
+        b = cvsRepProp.ExportData("", 9, 0, True, True, True)
+        cvsRepProp.Quit
+                    Application.DisplayAlerts = False
+                        weekly.Cells.Clear
+                        weekly.Cells.PasteSpecial
+
+End Function
+
+Function CloseCmsConnection()
+    Set INFO = Nothing
+    Set cvsLog = Nothing
+    Set cvsRepProp = Nothing
+    Set cvsconn = Nothing
+    Set cvsSrv = Nothing
+    Set cvsApp = Nothing
+End Function
+
