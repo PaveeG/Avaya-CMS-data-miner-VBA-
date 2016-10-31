@@ -1,1 +1,241 @@
-<br /><br /><br />Option Explicit<br /><br />''Assigning variables to CMS application objects library (referneces)<br />Dim cvsApp As O<br />bject, cvsSrv As Object, cvsconn As Object, INFO As Object, cvsRepProp As Object, cvsLog As Object<br />Dim bConnected As Boolean, b As Boolean<br />Dim iServer As Integer<br />Dim ACD As String<br /><br />''Defining new books, worksheets as different data references<br />Dim MainBook As Workbook, AgentBook As Workbook, WFMBook As Workbook<br />Dim wsMainBook As Worksheet, wsAgentBook As Worksheet, wsWFMBook As Worksheet, KanaSheet  As Worksheet<br />Dim counter As Integer<br /><br />''Defining Collection of Cells Objects<br />Public List As Collection<br /><br /><br />Public Const ROWCOUNT = 24 ''harcoding number of rows in the file<br /><br /><br />Sub mainTab()<br /><br />Dim x As Integer ''loop counter x <br />Dim i As Integer '' loop counter i<br /><br />Dim listCollection As New Collection  '' new collection<br />Dim rowCollection As New Collection '' new collection<br /><br />ActiveWorkbook.Worksheets.Add.Name = "RawKana"<br /><br />setProperties '' setting properties<br />OpenCmsConnection '' Opening connection to CMS app<br />getKanaReport '' opening and getting email data<br /><br />''Assigning names to each row<br />With wsMainBook<br />    .Cells.ClearContents<br />    .Cells(1, 1) = "Ext"<br />    .Cells(1, 2) = "Name"<br />    .Cells(1, 3) = "Kana %"<br />    .Cells(1, 4) = "ePH"<br />    .Cells(1, 5) = "Lang 1"<br />    .Cells(1, 6) = "Lang 2"<br />    .Cells(1, 7) = "Start"<br />    .Cells(1, 8) = "Stop"<br />    .Cells(1, 9) = "Other"<br />    .Cells(1, 10) = "Notes"<br />    .Cells(1, 11) = "KET"<br />    .Cells(1, 12) = "SRS"<br />    .Cells(1, 13) = "S&amp;S"<br />    .Cells(1, 14) = "BRG"<br />    .Cells(1, 15) = "LUX"<br />    .Cells(1, 16) = "SPG"<br />    .Cells(1, 17) = "CS"<br />    .Cells(1, 18) = "RQ SRS"<br />    .Cells(1, 19) = "RQ SNS"<br />    .Cells(1, 20) = "RQ BRG"<br />    .Cells(1, 21) = "ID SRS"<br />    .Cells(1, 22) = "ID BRG"<br />    .Cells(1, 23) = "ID PROF"<br />    .Cells(1, 24) = "Department"<br />End With<br /><br />wsMainBook.Activate<br />x = 1<br />i = 2<br /><br />''Looping through file with emails and assigning cells (rows) according to each agent: if = "YES"<br />Do<br />    If wsAgentBook.Cells(x, 12) = "Sales &amp; Service" And wsAgentBook.Cells(x, 20) = "YES" Then<br />        <br />        Set rowCollection = New Collection<br />           rowCollection.Add (wsAgentBook.Cells(x, 1)) ''Ext<br />           rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Name<br />           rowCollection.Add getKanaPercent(wsAgentBook.Cells(x, 1), x) '' Kana %<br />           rowCollection.Add ("ePh goes here") ''ePh<br />           rowCollection.Add (wsAgentBook.Cells(x, 3)) ''Lang<br />           rowCollection.Add (wsAgentBook.Cells(x, 4)) ''Lang 2<br />           rowCollection.Add ("START") ''Start<br />           rowCollection.Add ("STOP") ''Stop<br />           rowCollection.Add ("OTHER") ''Other<br />           rowCollection.Add (wsAgentBook.Cells(x, 13)) ''Notes<br />           rowCollection.Add (wsAgentBook.Cells(x, 5)) ''KET<br />           rowCollection.Add (wsAgentBook.Cells(x, 6)) ''SRS<br />           rowCollection.Add (wsAgentBook.Cells(x, 7)) ''S&amp;S<br />           rowCollection.Add (wsAgentBook.Cells(x, 8)) ''BRG<br />           rowCollection.Add (wsAgentBook.Cells(x, 9)) '' LUX<br />           rowCollection.Add (wsAgentBook.Cells(x, 10)) ''SPG<br />           rowCollection.Add (wsAgentBook.Cells(x, 11)) ''CS<br />           rowCollection.Add (wsAgentBook.Cells(x, 14)) ''SRS RQ<br />           rowCollection.Add (wsAgentBook.Cells(x, 15)) ''S&amp;S RQ<br />           rowCollection.Add (wsAgentBook.Cells(x, 16)) ''BRG RQ<br />           rowCollection.Add (wsAgentBook.Cells(x, 17)) ''ID SRS<br />           rowCollection.Add (wsAgentBook.Cells(x, 18)) ''ID BRG<br />           rowCollection.Add (wsAgentBook.Cells(x, 19)) ''ID PROF<br />           rowCollection.Add (wsAgentBook.Cells(x, 12)) ''DEP<br />           listCollection.Add rowCollection<br /><br />    End If<br />    x = x + 1<br />    <br />   <br />Loop Until IsEmpty(wsAgentBook.Cells(x, 1))  '' Defining the last row in a loop<br /><br />Dim a, b As Integer<br /><br />''Printing collection of items to excel cells<br />For a = 1 To listCollection.Count<br />    For b = 1 To ROWCOUNT<br />        wsMainBook.Cells(a + 1, b) = listCollection(a)(b)<br />    Next<br />Next<br /><br /><br /><br />End Sub<br /><br /><br />''This function is responsible for opening CMS connections (server)<br />Function OpenCmsConnection()<br /><br />Dim dateRange2 As String<br /><br />dateRange2 = "01/07/2016" &amp; "-" &amp; "09/07/2016" ''Hardcoded date range - this can be change to dynamic - depending on needs<br /><br />Application.ScreenUpdating = False<br /><br />Set cvsApp = CreateObject("ACSUP.cvsApplication")  ''Creating an object from CMS object library<br />Set cvsconn = CreateObject("ACSCN.cvsConnection") ''Creating an object from CMS object library<br />Set cvsSrv = CreateObject("ACSUPSRV.cvsServer") ''Creating an object from CMS object library<br />  bConnected = False   <br />  Set cvsSrv = cvsApp.Servers(1)   ''Opening connection to the promary server if this is not available go to the other ip<br />  If cvsSrv.ServerKey Like "*\10.5.168.27\*\*\*" Then<br />    bConnected = True<br />  End If<br />If bConnected = False Then<br />   If cvsSrv.ServerKey Like "*\10.20.35.27\*\*\*" Then '' secondaty IP - used if primary connection is not opened<br />    bConnected = True<br />  End If<br />End If<br />If bConnected = False Then<br />  If MsgBox("No active CMS Supervisor connection found.  Please log in and try again.", vbOKOnly, "Another Security Warning") = vbOK Then End<br />End If<br />  cvsSrv.Reports.ACD = 1<br /><br /><br />End Function<br /><br />''Defining the report settings<br />Function getKanaReport()<br /><br />    Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX") '' Report path and name assigned to INFO object<br />    b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)<br />        cvsRepProp.Window.Top = 11595<br />        cvsRepProp.Window.Left = 15<br />        cvsRepProp.Window.Width = 6450<br />        cvsRepProp.Window.Height = 2850<br />        cvsRepProp.TimeZone = "Europe/Dublin"<br />        cvsRepProp.SetProperty "Agent Group", "C all" <br />        cvsRepProp.SetProperty "Dates", "  " &amp; monthToDate() &amp; "  " ''monthToDate() - dynamic date range<br />        b = cvsRepProp.ExportData("", 9, 0, True, True, True)<br />        cvsRepProp.Quit<br />        <br />Application.DisplayAlerts = False<br />    KanaSheet.Cells.PasteSpecial<br />Application.DisplayAlerts = True<br /><br /><br /><br />''Closing CMS application objects (sets to nothing)<br />End Function<br /><br />Function CloseCmsConnection()<br />    Set INFO = Nothing<br />    Set cvsLog = Nothing<br />    Set cvsRepProp = Nothing<br />    Set cvsconn = Nothing<br />    Set cvsSrv = Nothing<br />    Set cvsApp = Nothing<br />End Function<br /><br /><br /><br /><br />''Setting up global variables<br />Function setProperties()<br /><br />Set MainBook = ActiveWorkbook<br />Set wsMainBook = MainBook.Sheets("Main")<br /><br />Application.DisplayAlerts = False<br />    Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="Intraday14", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)<br />    Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")<br />    Set wsAgentBook = AgentBook.Sheets("Timetable")<br />    Set wsWFMBook = WFMBook.Sheets(1)<br />    Set KanaSheet = MainBook.Sheets("RawKana")<br />Application.DisplayAlerts = True<br /><br /><br />End Function<br /><br /><br />''Defining the date range to reflect "month to date" range<br />Function monthToDate() As String<br />Dim dateRng As String<br />Dim firstOfMnth, todayDate, previousDay As Variant<br /><br />previousDay = Date - 1<br />todayDate = Day(Date)<br />firstOfMnth = Date - todayDate + 1<br />    If todayDate = 1 Then<br />        monthToDate = firstOfMnth<br />        Exit Function<br />    ElseIf todayDate = 2 Then monthToDate = Date - Day(Date) + 1<br />    Else: monthToDate = Date - Day(Date) + 1 &amp; "-" &amp; Date - 1<br />    End If<br />End Function<br /><br /><br /><br /><br />'' This method calulates percent of time spent on KANA AUX<br />Function getKanaPercent(extNum As Long, x As Integer)<br />counter = 1<br />getKanaPercent = 0<br /><br /><br />Do<br />    If KanaSheet.Cells(counter, 2) = extNum Then<br />        '''Getting Kana percent calculation<br />        On Error Resume Next<br />        getKanaPercent = KanaSheet.Cells(counter, 14) / (KanaSheet.Cells(counter, 3) - (KanaSheet.Cells(counter, 5) + KanaSheet.Cells(counter, 6) + KanaSheet.Cells(counter, 7) + KanaSheet.Cells(counter, 8) + _<br />        KanaSheet.Cells(counter, 11) + KanaSheet.Cells(counter, 12) + KanaSheet.Cells(counter, 13)))<br />        Exit Function<br />    End If<br />    counter = counter + 1<br />Loop Until IsEmpty(KanaSheet.Cells(counter, 1))<br /><br />End Function<br /><br /><br />
+Option Explicit
+ 
+''Assigning variables to CMS application objects library (referneces)
+Dim cvsApp As O
+bject, cvsSrv As Object, cvsconn As Object, INFO As Object, cvsRepProp As Object, cvsLog As Object
+Dim bConnected As Boolean, b As Boolean
+Dim iServer As Integer
+Dim ACD As String
+ 
+''Defining new books, worksheets as different data references
+Dim MainBook As Workbook, AgentBook As Workbook, WFMBook As Workbook
+Dim wsMainBook As Worksheet, wsAgentBook As Worksheet, wsWFMBook As Worksheet, KanaSheet  As Worksheet
+Dim counter As Integer
+ 
+''Defining Collection of Cells Objects
+Public List As Collection
+ 
+ 
+Public Const ROWCOUNT = 24 ''harcoding number of rows in the file
+ 
+ 
+Sub mainTab()
+ 
+Dim x As Integer ''loop counter x 
+Dim i As Integer '' loop counter i
+ 
+Dim listCollection As New Collection  '' new collection
+Dim rowCollection As New Collection '' new collection
+ 
+ActiveWorkbook.Worksheets.Add.Name = "RawKana"
+ 
+setProperties '' setting properties
+OpenCmsConnection '' Opening connection to CMS app
+getKanaReport '' opening and getting email data
+ 
+''Assigning names to each row
+With wsMainBook
+    .Cells.ClearContents
+    .Cells(1, 1) = "Ext"
+    .Cells(1, 2) = "Name"
+    .Cells(1, 3) = "Kana %"
+    .Cells(1, 4) = "ePH"
+    .Cells(1, 5) = "Lang 1"
+    .Cells(1, 6) = "Lang 2"
+    .Cells(1, 7) = "Start"
+    .Cells(1, 8) = "Stop"
+    .Cells(1, 9) = "Other"
+    .Cells(1, 10) = "Notes"
+    .Cells(1, 11) = "KET"
+    .Cells(1, 12) = "SRS"
+    .Cells(1, 13) = "S&S"
+    .Cells(1, 14) = "BRG"
+    .Cells(1, 15) = "LUX"
+    .Cells(1, 16) = "SPG"
+    .Cells(1, 17) = "CS"
+    .Cells(1, 18) = "RQ SRS"
+    .Cells(1, 19) = "RQ SNS"
+    .Cells(1, 20) = "RQ BRG"
+    .Cells(1, 21) = "ID SRS"
+    .Cells(1, 22) = "ID BRG"
+    .Cells(1, 23) = "ID PROF"
+    .Cells(1, 24) = "Department"
+End With
+ 
+wsMainBook.Activate
+x = 1
+i = 2
+ 
+''Looping through file with emails and assigning cells (rows) according to each agent: if = "YES"
+Do
+    If wsAgentBook.Cells(x, 12) = "Sales & Service" And wsAgentBook.Cells(x, 20) = "YES" Then
+        
+        Set rowCollection = New Collection
+           rowCollection.Add (wsAgentBook.Cells(x, 1)) ''Ext
+           rowCollection.Add (wsAgentBook.Cells(x, 2)) ''Name
+           rowCollection.Add getKanaPercent(wsAgentBook.Cells(x, 1), x) '' Kana %
+           rowCollection.Add ("ePh goes here") ''ePh
+           rowCollection.Add (wsAgentBook.Cells(x, 3)) ''Lang
+           rowCollection.Add (wsAgentBook.Cells(x, 4)) ''Lang 2
+           rowCollection.Add ("START") ''Start
+           rowCollection.Add ("STOP") ''Stop
+           rowCollection.Add ("OTHER") ''Other
+           rowCollection.Add (wsAgentBook.Cells(x, 13)) ''Notes
+           rowCollection.Add (wsAgentBook.Cells(x, 5)) ''KET
+           rowCollection.Add (wsAgentBook.Cells(x, 6)) ''SRS
+           rowCollection.Add (wsAgentBook.Cells(x, 7)) ''S&S
+           rowCollection.Add (wsAgentBook.Cells(x, 8)) ''BRG
+           rowCollection.Add (wsAgentBook.Cells(x, 9)) '' LUX
+           rowCollection.Add (wsAgentBook.Cells(x, 10)) ''SPG
+           rowCollection.Add (wsAgentBook.Cells(x, 11)) ''CS
+           rowCollection.Add (wsAgentBook.Cells(x, 14)) ''SRS RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 15)) ''S&S RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 16)) ''BRG RQ
+           rowCollection.Add (wsAgentBook.Cells(x, 17)) ''ID SRS
+           rowCollection.Add (wsAgentBook.Cells(x, 18)) ''ID BRG
+           rowCollection.Add (wsAgentBook.Cells(x, 19)) ''ID PROF
+           rowCollection.Add (wsAgentBook.Cells(x, 12)) ''DEP
+           listCollection.Add rowCollection
+ 
+    End If
+    x = x + 1
+    
+   
+Loop Until IsEmpty(wsAgentBook.Cells(x, 1))  '' Defining the last row in a loop
+ 
+Dim a, b As Integer
+ 
+''Printing collection of items to excel cells
+For a = 1 To listCollection.Count
+    For b = 1 To ROWCOUNT
+        wsMainBook.Cells(a + 1, b) = listCollection(a)(b)
+    Next
+Next
+ 
+ 
+ 
+End Sub
+ 
+ 
+''This function is responsible for opening CMS connections (server)
+Function OpenCmsConnection()
+ 
+Dim dateRange2 As String
+ 
+dateRange2 = "01/07/2016" & "-" & "09/07/2016" ''Hardcoded date range - this can be change to dynamic - depending on needs
+ 
+Application.ScreenUpdating = False
+ 
+Set cvsApp = CreateObject("ACSUP.cvsApplication")  ''Creating an object from CMS object library
+Set cvsconn = CreateObject("ACSCN.cvsConnection") ''Creating an object from CMS object library
+Set cvsSrv = CreateObject("ACSUPSRV.cvsServer") ''Creating an object from CMS object library
+  bConnected = False                                      
+  Set cvsSrv = cvsApp.Servers(1)                                                ''Opening connection to the promary server if this is not available go to the other ip
+  If cvsSrv.ServerKey Like "*\10.5.168.27\*\*\*" Then
+    bConnected = True
+  End If
+If bConnected = False Then
+   If cvsSrv.ServerKey Like "*\10.20.35.27\*\*\*" Then '' secondaty IP - used if primary connection is not opened
+    bConnected = True
+  End If
+End If
+If bConnected = False Then
+  If MsgBox("No active CMS Supervisor connection found.  Please log in and try again.", vbOKOnly, "Another Security Warning") = vbOK Then End
+End If
+  cvsSrv.Reports.ACD = 1
+ 
+ 
+End Function
+ 
+''Defining the report settings
+Function getKanaReport()
+ 
+    Set INFO = cvsSrv.Reports.Reports("Historical\Designer\Agents AUX") '' Report path and name assigned to INFO object
+    b = cvsSrv.Reports.CreateReport(INFO, cvsRepProp)
+        cvsRepProp.Window.Top = 11595
+        cvsRepProp.Window.Left = 15
+        cvsRepProp.Window.Width = 6450
+        cvsRepProp.Window.Height = 2850
+        cvsRepProp.TimeZone = "Europe/Dublin"
+        cvsRepProp.SetProperty "Agent Group", "C all" 
+        cvsRepProp.SetProperty "Dates", "  " & monthToDate() & "  " ''monthToDate() - dynamic date range
+        b = cvsRepProp.ExportData("", 9, 0, True, True, True)
+        cvsRepProp.Quit
+        
+Application.DisplayAlerts = False
+    KanaSheet.Cells.PasteSpecial
+Application.DisplayAlerts = True
+ 
+ 
+ 
+''Closing CMS application objects (sets to nothing)
+End Function
+ 
+Function CloseCmsConnection()
+    Set INFO = Nothing
+    Set cvsLog = Nothing
+    Set cvsRepProp = Nothing
+    Set cvsconn = Nothing
+    Set cvsSrv = Nothing
+    Set cvsApp = Nothing
+End Function
+ 
+ 
+ 
+ 
+''Setting up global variables
+Function setProperties()
+ 
+Set MainBook = ActiveWorkbook
+Set wsMainBook = MainBook.Sheets("Main")
+ 
+Application.DisplayAlerts = False
+    Set AgentBook = Workbooks.Open("W:\ops\Timetables\Kana Timetables.xlsm", ReadOnly:=True, Password:="Intraday14", IgnoreReadOnlyRecommended:=True, CorruptLoad:=True)
+    Set WFMBook = Workbooks.Open("T:\Autorun\Cork eService Mng.xls")
+    Set wsAgentBook = AgentBook.Sheets("Timetable")
+    Set wsWFMBook = WFMBook.Sheets(1)
+    Set KanaSheet = MainBook.Sheets("RawKana")
+Application.DisplayAlerts = True
+ 
+ 
+End Function
+ 
+ 
+''Defining the date range to reflect "month to date" range
+Function monthToDate() As String
+Dim dateRng As String
+Dim firstOfMnth, todayDate, previousDay As Variant
+ 
+previousDay = Date - 1
+todayDate = Day(Date)
+firstOfMnth = Date - todayDate + 1
+    If todayDate = 1 Then
+        monthToDate = firstOfMnth
+        Exit Function
+    ElseIf todayDate = 2 Then monthToDate = Date - Day(Date) + 1
+    Else: monthToDate = Date - Day(Date) + 1 & "-" & Date - 1
+    End If
+End Function
+ 
+ 
+ 
+ 
+'' This method calulates percent of time spent on KANA AUX
+Function getKanaPercent(extNum As Long, x As Integer)
+counter = 1
+getKanaPercent = 0
+ 
+ 
+Do
+    If KanaSheet.Cells(counter, 2) = extNum Then
+        '''Getting Kana percent calculation
+        On Error Resume Next
+        getKanaPercent = KanaSheet.Cells(counter, 14) / (KanaSheet.Cells(counter, 3) - (KanaSheet.Cells(counter, 5) + KanaSheet.Cells(counter, 6) + KanaSheet.Cells(counter, 7) + KanaSheet.Cells(counter, 8) + _
+        KanaSheet.Cells(counter, 11) + KanaSheet.Cells(counter, 12) + KanaSheet.Cells(counter, 13)))
+        Exit Function
+    End If
+    counter = counter + 1
+Loop Until IsEmpty(KanaSheet.Cells(counter, 1))
+ 
+End Function
+ 
